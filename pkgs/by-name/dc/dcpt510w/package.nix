@@ -29,21 +29,34 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper
   ];
 
+  buildInputs = [
+    cups
+    ghostscript
+    psutils
+  ];
+
   unpackPhase = ''
     dpkg-deb -x $src $out
   '';
 
   installPhase = ''
+    runHook preInstall
+
     dir=$out/opt/brother/Printers/${model}
+    interpreter=${pkgsi686Linux.glibc.out}/lib/ld-linux.so.2
 
     # install lpr
     substituteInPlace $dir/lpd/filter_${model} \
       --replace-fail "/usr/bin/perl" "${perl}/bin/perl" \
       --replace-fail "/usr/bin/pdf2ps" "${ghostscript}/bin/pdf2ps" \
-      --replace-fail '`which gs`' "${ghostscript}/bin/gs"
+      --replace-fail "my \$PRINTER = \$0;" "my \$PRINTER = \"${model}\";" \
+      --replace-fail "my \$BR_PRT_PATH = Cwd::realpath (\$0);" "my \$BR_PRT_PATH = \"$dir\";" \
+      --replace-fail "\`which gs\`" "\"${ghostscript}/bin/gs\""
 
-    patchelf --set-interpreter ${pkgsi686Linux.glibc.out}/lib/ld-linux.so.2 \
-      $dir/lpd/br${model}filter
+    patchelf --set-interpreter "$interpreter" \
+      "$dir/lpd/br${model}filter"
+    patchelf --set-interpreter "$interpreter" \
+      "$out/usr/bin/brprintconf_${model}"
 
     wrapProgram $dir/inf/setupPrintcapij \
       --prefix PATH ":" ${
@@ -68,6 +81,10 @@ stdenv.mkDerivation (finalAttrs: {
       --replace-fail "/usr" "$out/usr" \
       --replace-fail "/opt" "$out/opt"
 
+    mkdir -p $out/usr/share/cups/model/Brother/
+    mkdir -p $out/usr/share/ppd/Brother/
+    chmod -R a+w $out/usr/share/
+
     wrapProgram $dir/cupswrapper/cupswrapper${model} \
       --prefix PATH ":" ${
         lib.makeBinPath [
@@ -77,6 +94,8 @@ stdenv.mkDerivation (finalAttrs: {
           gnused
         ]
       }
+
+    runHook postInstall
   '';
 
   meta = {
@@ -88,4 +107,3 @@ stdenv.mkDerivation (finalAttrs: {
     maintainers = [ lib.maintainers.fqidz ];
   };
 })
-
