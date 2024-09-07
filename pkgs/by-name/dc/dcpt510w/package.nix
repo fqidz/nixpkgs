@@ -10,6 +10,7 @@
   perl,
   gnused,
   ghostscript,
+  psutils,
   pkgsi686Linux,
 }:
 let
@@ -28,25 +29,19 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper
   ];
 
-  buildInputs = [
-    cups
-    ghostscript
-  ];
-
-  # dontBuild = true;
-
   unpackPhase = ''
     dpkg-deb -x $src $out
   '';
-
-  # substituteInPlace $dir/lpd/filter_${model} \
-  #   --replace-fail "/usr/bin/perl" "${perl}/bin/perl" \
-  #   --replace-fail "/usr/bin/pdf2ps" "${ghostscript}/bin/pdf2ps"
 
   installPhase = ''
     dir=$out/opt/brother/Printers/${model}
 
     # install lpr
+    substituteInPlace $dir/lpd/filter_${model} \
+      --replace-fail "/usr/bin/perl" "${perl}/bin/perl" \
+      --replace-fail "/usr/bin/pdf2ps" "${ghostscript}/bin/pdf2ps" \
+      --replace-fail '`which gs`' "${ghostscript}/bin/gs"
+
     patchelf --set-interpreter ${pkgsi686Linux.glibc.out}/lib/ld-linux.so.2 \
       $dir/lpd/br${model}filter
 
@@ -54,6 +49,7 @@ stdenv.mkDerivation (finalAttrs: {
       --prefix PATH ":" ${
         lib.makeBinPath [
           coreutils
+          gnused
         ]
       }
 
@@ -61,17 +57,26 @@ stdenv.mkDerivation (finalAttrs: {
       --prefix PATH ":" ${
         lib.makeBinPath [
           coreutils
-          perl
-          ghostscript
           file
           gnused
         ]
       }
 
+    # install cupswrapper
+    substituteInPlace $dir/cupswrapper/cupswrapper${model} \
+      --replace-fail "/usr/bin/psnup" "${psutils}/bin/psnup" \
+      --replace-fail "/usr" "$out/usr" \
+      --replace-fail "/opt" "$out/opt"
 
-    echo "----------------------"
-    echo $dir
-    echo "----------------------"
+    wrapProgram $dir/cupswrapper/cupswrapper${model} \
+      --prefix PATH ":" ${
+        lib.makeBinPath [
+          cups
+          coreutils
+          psutils
+          gnused
+        ]
+      }
   '';
 
   meta = {
