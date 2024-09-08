@@ -11,13 +11,12 @@
   gnused,
   ghostscript,
   psutils,
+  libredirect,
   pkgsi686Linux,
+  debugLvl ? 0,
 }:
-let
-  model = "dcpt510w";
-in
 stdenv.mkDerivation (finalAttrs: {
-  pname = "brother-${model}";
+  pname = "brother-dcpt510w";
   version = "1.0.1-0";
   src = fetchurl {
     url = "https://download.brother.com/welcome/dlf103620/dcpt510wpdrv-${finalAttrs.version}.i386.deb";
@@ -42,50 +41,37 @@ stdenv.mkDerivation (finalAttrs: {
   installPhase = ''
     runHook preInstall
 
-    dir=$out/opt/brother/Printers/${model}
+    LPDDIR=$out/opt/brother/Printers/dcpt510w/lpd
+    WRAPPER=$out/opt/brother/Printers/dcpt510w/cupswrapper/brother_lpdwrapper_dcpt510w
+
     interpreter=${pkgsi686Linux.glibc.out}/lib/ld-linux.so.2
 
-    # install lpr
-    substituteInPlace $dir/lpd/filter_${model} \
+    # Subsitute variables/paths to work with nix paths
+    # note:
+    #   (1) the function on brother_ldpwrapper_dcpt510w:878
+    #     tries to execute $lpdconf_command, but $lpdconf file doesn't
+    #     exist ($out/opt/brother/Printers/dcpt510w/lpd/brprintconf_dcpt510w)
+    #   (2) this file uses $LPDIR/filter_dcpt510w (on line 106)
+    substituteInPlace $WRAPPER \
+      --replace-fail "/usr/bin/perl" "${perl}/bin/perl" \
+      --replace-fail "PRINTER =~" "PRINTER = \"dcpt510w\"; #" \
+      --replace-fail "\$DEBUG=0;" "\$DEBUG=${toString debugLvl};" \
+      --replace-fail "basedir =~" "basedir = \"$out/opt/brother/Printers/dcpt510w/\"; #"
+
+    # note: this file uses $LPDIR/brdcpt510wfilter (on line 71)
+    substituteInPlace $LPDDIR/filter_dcpt510w \
       --replace-fail "/usr/bin/perl" "${perl}/bin/perl" \
       --replace-fail "/usr/bin/pdf2ps" "${ghostscript}/bin/pdf2ps" \
-      --replace-fail "PRINTER =~" "PRINTER = \"${model}\"; #" \
-      --replace-fail "BR_PRT_PATH =~" "BR_PRT_PATH = \"$dir\"; #" \
-      --replace-fail "\`which gs\`" "\"${ghostscript}/bin/gs\""
+      --replace-fail "GHOST_SCRIPT=" "GHOSTCRIPT=\"${ghostscript}/bin/gs\"; #" \
+      --replace-fail "PRINTER =~" "PRINTER = \"dcpt510w\"; #" \
+      --replace-fail "BR_PRT_PATH =~" "BR_PRT_PATH = \"$out/opt/brother/Printers/dcpt510w/\"; #"
 
     patchelf --set-interpreter "$interpreter" \
-      "$dir/lpd/br${model}filter"
-    patchelf --set-interpreter "$interpreter" \
-      "$out/usr/bin/brprintconf_${model}"
+      "$LPDDIR/brdcpt510wfilter"
 
-    wrapProgram $dir/inf/setupPrintcapij \
-      --prefix PATH ":" ${
-        lib.makeBinPath [
-          coreutils
-          gnused
-        ]
-      }
-
-    wrapProgram $dir/lpd/filter_${model} \
-      --prefix PATH ":" ${
-        lib.makeBinPath [
-          coreutils
-          file
-          gnused
-        ]
-      }
-
-    # install cupswrapper
-    substituteInPlace $dir/cupswrapper/cupswrapper${model} \
-      --replace-fail "/usr/bin/psnup" "${psutils}/bin/psnup" \
-      --replace-fail "/usr" "$out/usr" \
-      --replace-fail "/opt" "$out/opt"
-
-    mkdir -p $out/usr/share/cups/model/Brother/
-    mkdir -p $out/usr/share/ppd/Brother/
-
-    wrapProgram $dir/cupswrapper/cupswrapper${model} \
-      --prefix PATH ":" ${
+    # Allows the program to execute commands that they use from these packages
+    wrapProgram $WRAPPER \
+      --set PATH ${
         lib.makeBinPath [
           cups
           coreutils
@@ -93,6 +79,31 @@ stdenv.mkDerivation (finalAttrs: {
           gnused
         ]
       }
+
+    wrapProgram $LPDDIR/filter_dcpt510w \
+      --set PATH ${
+        lib.makeBinPath [
+          coreutils
+          file
+          gnused
+        ]
+      }
+
+    wrapProgram $LPDDIR/brdcpt510wfilter \
+      --set LD_PRELOAD "${libredirect}/lib/libredirect.so" \
+      --set NIX_REDIRECTS /opt=$out/opt
+
+    mkdir -p "$out/lib/cups/filter"
+    mkdir -p "$out/share/cups/model"
+
+    # Allow cups to discover the files (?)
+    ln -s $out/opt/brother/Printers/dcpt510w/cupswrapper/brother_lpdwrapper_dcpt510w \
+      $out/lib/cups/filter/brother_lpdwrapper_dcpt510w
+
+    ln -s $out/opt/brother/Printers/dcpt510w/cupswrapper/brother_dcpt510w_printer_en.ppd \
+      $out/share/cups/model/brother_dcpt510w_printer_en.ppd
+
+    runHook postInstall
   '';
 
   meta = {
