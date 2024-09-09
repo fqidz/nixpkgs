@@ -89,10 +89,6 @@ stdenv.mkDerivation (finalAttrs: {
         ]
       }
 
-    wrapProgram $LPDDIR/brdcpt510wfilter \
-      --set LD_PRELOAD "${libredirect}/lib/libredirect.so" \
-      --set NIX_REDIRECTS /opt=$out/opt
-
     mkdir -p "$out/lib/cups/filter"
     mkdir -p "$out/share/cups/model"
 
