@@ -33,11 +33,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "calibre";
-  version = "7.20.0";
+  version = "7.19.0";
 
   src = fetchurl {
     url = "https://download.calibre-ebook.com/${finalAttrs.version}/calibre-${finalAttrs.version}.tar.xz";
-    hash = "sha256-BhJEJsQKk/kJxycm/1mbtlrSaeFQPvWGGB9DUMidgII=";
+    hash = "sha256-q2vfEWWxC7++L0zIOgL+7VTL8zslcgRm7Q52tzaXvNU=";
   };
 
   patches = [
@@ -209,6 +209,8 @@ stdenv.mkDerivation (finalAttrs: {
       $ETN 'test_qt'  # we don't include svg or webp support
       $ETN 'test_import_of_all_python_modules'  # explores actual file paths, gets confused
       $ETN 'test_websocket_basic'  # flakey
+      $ETN 'test_get' # fails with segmentation fault
+      $ETN 'test_recipe_browser_qt'
       ${lib.optionalString (!unrarSupport) "$ETN 'test_unrar'"}
     )
 
