@@ -129,6 +129,12 @@ stdenv.mkDerivation rec {
   postFixup = ''
     moveToOutput bin/dbus-launch "$lib"
     ln -s "$lib/bin/dbus-launch" "$out/bin/"
+
+    mv "$dev/include/dbus-1.0/dbus" "$dev/include/dbus"
+    rmdir "$dev/include/dbus-1.0"
+
+    mv "$lib/lib/dbus-1.0/include" "$lib/lib/include"
+    rmdir "$lib/lib/dbus-1.0"
   '';
 
   passthru = {
