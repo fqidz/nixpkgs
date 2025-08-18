@@ -384,6 +384,12 @@ in
 
         bbswitch = callPackage ../os-specific/linux/bbswitch { };
 
+        ch341 =
+          if lib.versionAtLeast kernel.version "3.2" then
+            callPackage ../os-specific/linux/ch341 { }
+          else
+            null;
+
         ch9344 = callPackage ../os-specific/linux/ch9344 { };
 
         chipsec = callPackage ../tools/security/chipsec {
