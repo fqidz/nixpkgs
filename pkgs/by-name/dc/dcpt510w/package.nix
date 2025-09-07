@@ -73,15 +73,17 @@ stdenv.mkDerivation (finalAttrs: {
       --replace-fail "\$DEBUG=0;" "\$DEBUG=${toString debugLvl};" \
       --replace-fail "basedir =~" "basedir = \"$out/opt/brother/Printers/dcpt510w/\"; #"
 
+    # --replace-fail "/usr/bin/pdf2ps" "${ghostscript}/bin/pdf2ps" \
+    # --replace-fail "GHOST_SCRIPT=" "GHOSTCRIPT=\"${ghostscript}/bin/gs\"; #" \
+
     # note: this file uses $LPDIR/brdcpt510wfilter (on line 71)
     substituteInPlace $LPDDIR/filter_dcpt510w \
       --replace-fail "/usr/bin/perl" "${perl}/bin/perl" \
-      --replace-fail "/usr/bin/pdf2ps" "${ghostscript}/bin/pdf2ps" \
-      --replace-fail "GHOST_SCRIPT=" "GHOSTCRIPT=\"${ghostscript}/bin/gs\"; #" \
       --replace-fail "PRINTER =~" "PRINTER = \"dcpt510w\"; #" \
       --replace-fail "BR_PRT_PATH =~" "BR_PRT_PATH = \"$out/opt/brother/Printers/dcpt510w/\"; #"
 
-    patchelf --set-interpreter "$interpreter" \
+    # patchelf --set-interpreter "$interpreter" \
+    patchelf --set-interpreter $(cat $NIX_CC/nix-support/dynamic-linker) \
       "$LPDDIR/brdcpt510wfilter"
 
     # Allows the program to execute commands that they use from these packages
