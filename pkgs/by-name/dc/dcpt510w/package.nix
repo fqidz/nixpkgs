@@ -46,6 +46,9 @@ stdenv.mkDerivation (finalAttrs: {
       ]
     }
 
+    mkdir -p $out/lib/cups/filter/
+    ln -s $out/opt/brother/Printers/dcpt510w/lpd/filter_dcpt510w $out/lib/cups/filter/brother_lpdwrapper_dcpt510w
+
     mkdir -p $out/share/cups/model
     ln -s $out/opt/brother/Printers/dcpt510w/cupswrapper/brother_dcpt510w_printer_en.ppd $out/share/cups/model/
   '';
